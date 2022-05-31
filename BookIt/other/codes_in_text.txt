@@ -1,0 +1,61 @@
+select 3 tables
+SELECT movie.movie_name, user.username
+FROM ((seats
+INNER JOIN movie ON seats.movie_id = movie.movie_id)
+INNER JOIN user ON seats.user_id = user.user_id);
+
+
+//////////////////////////
+
+DELIMITER //
+CREATE PROCEDURE AVG_MARKS()
+BEGIN
+DECLARE ch_done INT DEFAULT 0;
+DECLARE C_A INT(10);
+DECLARE C_B INT(10);
+DECLARE C_net_amt DEC(10,2);
+
+DECLARE C_Tprice CURSOR FOR
+SELECT `price` AS A,`movie_id` AS B FROM `movie` WHERE `net_amt` IS NULL 
+FOR UPDATE;
+
+DECLARE CONTINUE HANDLER FOR NOT FOUND SET ch_done = 1;
+
+OPEN C_Tprice;
+FETCH C_Tprice INTO C_A,C_B;
+SET C_net_amt=C_A + (C_A*0.08);
+UPDATE `movie` SET `net_amt`=C_net_amt where `movie_id`=C_B;
+
+CLOSE C_Tprice;
+
+IF(ch_done = 1) THEN 
+        -- handle the No data error!
+        SELECT 'Oh no!';
+    END IF;
+
+END;
+//
+
+///////////////////////
+CREATE TRIGGER pass_crypt BEFORE UPDATE ON user FOR EACH ROW
+BEGIN
+SET new.pword := AES_ENCRYPT(new.pword,'kar'); 
+end;
+//column type has to be in Binary or VarBinary as the encrypted password might have blank spaces which VarChar removes while inserting which will result in NULL value//
+
+//
+ticket query
+
+SELECT movie.movie_name, user.username, snacks.popcorn, snacks.drink, seats.no_seat, movie.price , movie.net_amt AS incl_of_tax_for_1_ticket, movie.net_amt*seats.no_seat AS incl_of_tax_for_all_tickets 
+FROM (((seats 
+      INNER JOIN movie ON seats.movie_id = movie.movie_id) 
+      INNER JOIN user ON seats.user_id = user.user_id) 
+      INNER JOIN snacks on seats.seat_id = snacks.seat_id) 
+      WHERE seats.seat_id='28';
+
+//////////////////////////(for price,net_amt,snacks+price and total_amt)
+SELECT movie.movie_name, user.username, snacks.popcorn, snacks.drink, seats.no_seat, movie.price , (snacks.popcorn+snacks.drink)*50 AS snacks_amt, movie.net_amt*seats.no_seat AS incl_of_tax,((snacks.popcorn+snacks.drink)*50)+(movie.net_amt*seats.no_seat) AS net_total
+FROM (((seats 
+      INNER JOIN movie ON seats.movie_id = movie.movie_id) 
+      INNER JOIN user ON seats.user_id = user.user_id) 
+      INNER JOIN snacks on seats.seat_id = snacks.seat_id) 
